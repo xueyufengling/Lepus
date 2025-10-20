@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "lepus.mc.mixins.defs",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"LevelRendererMixin","ItemRendererMixin","GuiGraphicsMixin","FogRendererMixin","ExtendedShaderMixin","FinalPassRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

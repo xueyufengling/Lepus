@@ -148,10 +148,10 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
     implementation "software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}"
-    additionalRuntimeClasspath(implementation(files("libs/Lyra.jar")))
-    additionalRuntimeClasspath(implementation(files("libs/Alpha-Lyr.jar")))
     jarJar(files("libs/Lyra.jar"))
     jarJar(files("libs/Alpha-Lyr.jar"))
+    additionalRuntimeClasspath(implementation(files("libs/Lyra.jar")))
+    additionalRuntimeClasspath(implementation(files("libs/Alpha-Lyr.jar")))
     implementation files("ext/iris-neoforge-1.8.1+mc1.21.1.jar")
 }
 

@@ -9,6 +9,7 @@ import com.mojang.logging.LogUtils;
 
 import lepus.mc.codec.annotation.CodecAutogen;
 import lepus.mc.core.registry.RegistryFactory;
+import lepus.mc.datagen.ExtDataGenerator;
 import lepus.mc.datagen.annotation.RegistryEntry;
 import lepus.mc.event.ClientLifecycleTrigger;
 import lyra.klass.JarKlassLoader;
@@ -27,6 +28,8 @@ import net.neoforged.fml.event.lifecycle.FMLConstructModEvent;
 import net.neoforged.fml.event.lifecycle.ModLifecycleEvent;
 import net.neoforged.fml.javafmlmod.FMLModContainer;
 import net.neoforged.fml.loading.FMLLoader;
+import net.neoforged.neoforge.data.event.GatherDataEvent;
+import net.neoforged.neoforge.registries.NewRegistryEvent;
 
 @EventBusSubscriber(bus = Bus.MOD)
 public class Core {
@@ -112,11 +115,10 @@ public class Core {
 		loadLibrary();
 		ObjectManipulator.setObject(Core.class, "Mod", getModContainer(event));
 		ObjectManipulator.setObject(Core.class, "ModBus", getModEventBus(Mod));// 初始化赋值ModBus
-		loadPackage(internalPackages);
+		loadPackage(Core.class, internalPackages);
 		ClientLifecycleTrigger.CLIENT_CONNECT.addCallback(EventPriority.HIGHEST, (ClientLevel level, RegistryAccess.Frozen registryAccess) -> {
 			ModInit.Initializer.executeAllInitFuncs(null, ModInit.Stage.CLIENT_CONNECT);
 		});
-		ModInit.Initializer.executeAllInitFuncs(event, ModInit.Stage.PRE_INIT);
 	}
 
 	/**
@@ -124,34 +126,39 @@ public class Core {
 	 * 
 	 * @param event
 	 */
-	@SubscribeEvent(priority = EventPriority.LOWEST)
-	private static final void postinit(FMLConstructModEvent event) {
+	@SubscribeEvent(priority = EventPriority.HIGHEST)
+	private static final void postinit(NewRegistryEvent event) {
+		ModInit.Initializer.executeAllInitFuncs(event, ModInit.Stage.PRE_INIT);
 		CodecAutogen.CodecGenerator.generateCodecs();// 生成CODEC
 		RegistryEntry.DeferredEntryHolderRegister.registerAll();
 		RegistryFactory.registerAll();// 注册所有新添加的注册表及其条目
 		ModInit.Initializer.executeAllInitFuncs(event, ModInit.Stage.POST_INIT);
 	}
 
-	public static void loadPackage(String pkg) {
-		KlassLoader.loadKlass(pkg, true);// 强制加载并初始化未使用的类
+	public static void datagen(GatherDataEvent event) {
+		ExtDataGenerator.datagen(event);
+	}
+
+	public static void loadPackage(Class<?> targetModCls, String pkg) {
+		KlassLoader.loadKlass(targetModCls, true, pkg, true);// 强制加载并初始化未使用的类
 		Logger.info("Loaded package " + pkg);
 	}
 
-	public static void loadPackage(List<String> pkgs) {
+	public static void loadPackage(Class<?> targetModCls, List<String> pkgs) {
 		for (String pkg : pkgs)
-			loadPackage(pkg);
+			loadPackage(targetModCls, pkg);
 	}
 
-	public static void loadClientPackage(String pkg) {
+	public static void loadClientPackage(Class<?> targetModCls, String pkg) {
 		ExecuteIn.Client(() -> {
-			KlassLoader.loadKlass(pkg, true);
+			KlassLoader.loadKlass(targetModCls, true, pkg, true);
 		});
 		Logger.info("Loaded client-side package " + pkg);
 	}
 
-	public static void loadClientPackage(List<String> pkgs) {
+	public static void loadClientPackage(Class<?> targetModCls, List<String> pkgs) {
 		for (String pkg : pkgs)
-			loadClientPackage(pkg);
+			loadClientPackage(targetModCls, pkg);
 	}
 
 	private static boolean printLog = true;

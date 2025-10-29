@@ -11,6 +11,7 @@ import lyra.klass.KlassWalker;
 import lyra.lang.DynamicConcurrentArrayList;
 import lyra.lang.JavaLang;
 import lyra.lang.internal.ReflectionBase;
+import lyra.object.Placeholders.TypeWrapper;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.Event;
 import net.neoforged.bus.api.EventPriority;
@@ -21,7 +22,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.EventBusSubscriber.Bus;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.fml.javafmlmod.FMLModContainer;
-import net.neoforged.neoforge.registries.RegisterEvent;
 
 /**
  * 初始化函数注解、<br>
@@ -40,7 +40,7 @@ public @interface ModInit {
 	};
 
 	public static enum Stage {
-		PRE_INIT, POST_INIT, PRE_REGISTER, POST_REGISTER, LOAD_COMPLETE, CLIENT_CONNECT
+		PRE_INIT, POST_INIT, LOAD_COMPLETE, CLIENT_CONNECT
 	}
 
 	/**
@@ -54,20 +54,19 @@ public @interface ModInit {
 
 	@EventBusSubscriber(bus = Bus.MOD)
 	public static class Initializer {
-
-		@SubscribeEvent(priority = EventPriority.HIGHEST)
-		private static final void preRegister(RegisterEvent event) {
-			ModInit.Initializer.executeAllInitFuncs(event, ModInit.Stage.PRE_REGISTER);
-		}
-
-		@SubscribeEvent(priority = EventPriority.LOWEST)
-		private static final void postRegister(RegisterEvent event) {
-			ModInit.Initializer.executeAllInitFuncs(event, ModInit.Stage.POST_REGISTER);
+		public static final Stage stageOf(Method m) {
+			if (m == null)
+				return null;
+			ModInit anno = m.getAnnotation(ModInit.class);
+			if (anno == null)
+				return null;
+			else
+				return anno.exec_stage();
 		}
 
 		@SubscribeEvent(priority = EventPriority.HIGHEST)
 		private static final void preLoadComplete(FMLLoadCompleteEvent event) {
-			ModInit.Initializer.executeAllInitFuncs(event, ModInit.Stage.PRE_REGISTER);
+			ModInit.Initializer.executeAllInitFuncs(event, ModInit.Stage.LOAD_COMPLETE);
 		}
 
 		/**
@@ -79,9 +78,12 @@ public @interface ModInit {
 			ModContainer mod = Core.Mod;
 			IEventBus bus = Core.ModBus;
 			Dist dist = Core.Env;
+			TypeWrapper<Integer> executed_counter = TypeWrapper.wrap(0);
 			try {
+				Core.logInfo("Initializer entered stage " + run_stage);
 				modInitClasses.forEach(
 						(Class<?> modInitClass) -> {
+							Core.logInfo("Initializer is scanning " + " static @ModInit(exec_stage=" + run_stage + ") methods in " + modInitClass.toString());
 							KlassWalker.walkAnnotatedMethods(modInitClass, ModInit.class, (Method m, boolean isStatic, Object obj, ModInit annotation) -> {
 								if (isStatic && annotation.exec_stage() == run_stage) {
 									Dist[] env = annotation.env();
@@ -102,8 +104,10 @@ public @interface ModInit {
 											try {
 												ReflectionBase.setAccessible(m, true);
 												m.invoke(obj, args);
+												Core.logInfo("Executed " + m.toString());
+												++executed_counter.value;
 											} catch (IllegalAccessException | InvocationTargetException e) {
-												Core.logError("@CoreInit method " + m + " execute failed.", e);
+												Core.logError("Method " + m + " execute failed.", e);
 											}
 											break;// 只要匹配任意一个env指定的运行环境，则执行该静态方法并退出循环转而判定下一个静态方法
 										}
@@ -112,8 +116,9 @@ public @interface ModInit {
 								return true;
 							});
 						});
+				Core.logInfo("Initializer executed " + executed_counter.value + " @ModInit methods in stage " + run_stage);
 			} catch (Throwable ex) {
-				Core.logError("@ModInit methdos execute faield.", ex);
+				Core.logError("Initializer execute @ModInit methods faield in stage " + run_stage + ", " + executed_counter.value + " executed.", ex);
 			}
 		}
 

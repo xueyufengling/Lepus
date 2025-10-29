@@ -232,6 +232,9 @@ public @interface RegistryEntry {
 				Core.logInfo("Complete collecting bootstrap values for registry " + registryKey.location());
 				return true;
 			});
+			Core.logInfo("Registered total " + registryClasses.size() + " classes, list:");
+			for (Class<?> registryClass : registryClasses)
+				Core.logInfo(registryClass.toString());
 			Core.logInfo("All bootstrap entries will be registered soon, if any entry was not registered, and no file generated while no error or exception was thrown, check if its registry is in RegistryWalker.bootstrapRegistryFieldsFilter map.");
 			return registrySetBuilder;
 		}
